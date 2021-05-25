@@ -66,6 +66,8 @@ var (
 	orig_tios      syscall_Termios
 	back_buffer    cellbuf
 	front_buffer   cellbuf
+	atermw         int
+	atermh         int
 	termw          int
 	termh          int
 	input_mode     = InputEsc
@@ -209,7 +211,8 @@ func get_term_size(fd uintptr) (int, int) {
 	var sz winsize
 	_, _, _ = syscall.Syscall(syscall.SYS_IOCTL,
 		fd, uintptr(syscall.TIOCGWINSZ), uintptr(unsafe.Pointer(&sz)))
-	return int(sz.cols), int(sz.rows)
+	atermw, atermh = int(sz.cols), int(sz.rows)
+	return atermw, atermh
 }
 
 func send_attr(fg, bg Attribute) {
@@ -336,9 +339,8 @@ func send_clear() error {
 }
 
 func update_size_maybe() error {
-	w, h := get_term_size(out.Fd())
-	if w != termw || h != termh {
-		termw, termh = w, h
+	if atermw != termw || atermh != termh {
+		termw, termh = atermw, atermh
 		back_buffer.resize(termw, termh)
 		front_buffer.resize(termw, termh)
 		front_buffer.clear()
